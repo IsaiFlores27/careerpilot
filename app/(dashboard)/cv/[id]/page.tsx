@@ -53,7 +53,7 @@ export default async function CvDetailPage({ params }: Props) {
           )}
         </div>
         <div className="flex gap-3">
-          <DownloadCvButton resumeId={id} />
+          <DownloadCvButton resumeId={id} profile={profile} />
           {resume.kind !== "tailored" && <OptimizeCvButton resumeId={id} />}
         </div>
       </div>
