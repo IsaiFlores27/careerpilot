@@ -15,7 +15,7 @@ export async function GET() {
     .from("profiles").select("full_name, target_role, active_resume_id").eq("id", user.id).single();
   const activeId = (profileResult.data as Record<string, unknown> | null)?.active_resume_id as string | undefined;
 
-  const [resumeResult, applicationsResult, matchesResult] = await Promise.all([
+  const [resumeResult, applicationsResult, matchesResult, historyResult] = await Promise.all([
     activeId
       ? serviceClient.from("resumes").select("id, kind, ats_score, diagnosis, structured, created_at, original_filename").eq("id", activeId).single()
       : serviceClient
@@ -24,6 +24,10 @@ export async function GET() {
           .order("created_at", { ascending: false }).limit(1).single(),
     serviceClient.from("applications").select("status").eq("user_id", user.id),
     serviceClient.from("job_matches").select("match_score").eq("user_id", user.id).eq("status", "suggested"),
+    serviceClient
+      .from("resumes").select("kind, ats_score, created_at")
+      .eq("user_id", user.id).not("ats_score", "is", null)
+      .order("created_at", { ascending: true }).limit(20),
   ]);
 
   const resume = resumeResult.data;
@@ -54,6 +58,7 @@ export async function GET() {
     resume_kind: resume?.kind ?? null,
     ats_score: resume?.ats_score ?? null,
     top_3_priorities: resume?.diagnosis?.top_3_priorities ?? null,
+    score_history: historyResult.data ?? [],
     derived,
     stats: {
       applications: applications.length,

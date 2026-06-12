@@ -64,13 +64,16 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  // Crear matches usuario ↔ vacante
+  // Crear matches usuario ↔ vacante y devolver jobs con su id de BD
   const jobRows = await serviceClient
     .from("jobs")
     .select("id, external_id")
     .in("external_id", jobs.map((j) => j.external_id));
 
+  const idByExternal = new Map<string, string>();
   if (jobRows.data && jobRows.data.length > 0) {
+    for (const j of jobRows.data) idByExternal.set(j.external_id, j.id);
+
     const matches = jobRows.data.map((j) => ({
       user_id: user.id,
       job_id: j.id,
@@ -83,5 +86,12 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  return NextResponse.json({ jobs, total: jobs.length });
+  const jobsWithIds = jobs.map((j) => ({
+    ...j,
+    id: idByExternal.get(j.external_id) ?? null,
+    match_status: "suggested" as const,
+    applied: false,
+  }));
+
+  return NextResponse.json({ jobs: jobsWithIds, total: jobs.length });
 }

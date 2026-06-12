@@ -13,9 +13,11 @@ export async function searchJobsWithGemini(
     ? " Incluye también posiciones 100% remotas."
     : "";
 
-  const prompt = `Eres un buscador de empleo experto. Genera 10 ofertas de trabajo REALISTAS y ACTUALES para el puesto "${params.query}" ${locationText}.${remoteText}
+  const prompt = `Eres un analista del mercado laboral. Genera 10 perfiles de vacante REALISTAS para el puesto "${params.query}" ${locationText}.${remoteText}
 
-Crea vacantes que reflejen el mercado laboral real actual en México/Latinoamérica. Usa nombres de empresas reales que operan en la región (BBVA, Santander, Cemex, OXXO, Liverpool, Grupo Bimbo, Softtek, Wizeline, Clip, Konfío, Rappi, Amazon, Mercado Libre, etc.) y portales reales (LinkedIn, OCC, Indeed, Computrabajo).
+Refleja el mercado laboral real actual en México/Latinoamérica: usa nombres de empresas reales que operan en la región y SÍ contratan este tipo de rol (BBVA, Santander, Cemex, OXXO, Liverpool, Grupo Bimbo, Softtek, Wizeline, Clip, Konfío, Rappi, Amazon, Mercado Libre, PepsiCo, Nestlé, etc.), con rangos salariales y requisitos típicos del mercado.
+
+IMPORTANTE sobre el campo "url": déjalo SIEMPRE como cadena vacía "". NO inventes URLs. El sistema generará un enlace de búsqueda real automáticamente.
 
 Devuelve ÚNICAMENTE un array JSON válido, sin texto adicional ni markdown:
 [
@@ -24,14 +26,14 @@ Devuelve ÚNICAMENTE un array JSON válido, sin texto adicional ni markdown:
     "company": "nombre empresa real",
     "location": "ciudad, país",
     "remote": true o false,
-    "url": "https://www.occ.com.mx/empleo/oferta/...",
-    "description": "descripción de 2-3 líneas con tecnologías/requisitos específicos",
+    "url": "",
+    "description": "descripción de 3-4 líneas con responsabilidades, tecnologías y requisitos específicos del puesto",
     "salary_min": número en MXN o null,
     "salary_max": número en MXN o null
   }
 ]
 
-Genera exactamente 10 vacantes variadas con empresas y títulos diferentes. Las URLs deben verse como URLs reales de portales de empleo aunque no sean enlaces activos.`;
+Genera exactamente 10 vacantes variadas con empresas y títulos diferentes.`;
 
   let response;
   try {

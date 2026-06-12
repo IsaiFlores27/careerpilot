@@ -16,6 +16,7 @@ interface Insights {
   strengths: string[];
   growth_areas: string[];
 }
+interface ScorePoint { kind: string; ats_score: number; created_at: string; }
 interface Summary {
   full_name: string | null;
   target_role: string | null;
@@ -23,6 +24,7 @@ interface Summary {
   resume_kind: string | null;
   ats_score: number | null;
   top_3_priorities: string[] | null;
+  score_history?: ScorePoint[];
   derived: {
     name: string | null;
     headline: string | null;
@@ -80,6 +82,20 @@ export default function DashboardPage() {
             : "Sube tu CV para activar todas las funciones de IA."}
         </p>
       </div>
+
+      {/* Banner perfil incompleto */}
+      {hasResume && summary && !summary.target_role && (
+        <Link href="/profile" className="flex items-center gap-4 bg-violet-600/10 border border-violet-500/30 rounded-2xl p-4 mb-6 hover:border-violet-500/50 transition-all group">
+          <svg className="w-5 h-5 text-violet-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          </svg>
+          <div className="flex-1">
+            <p className="text-sm font-medium text-white">Completa tu perfil para mejores resultados</p>
+            <p className="text-xs text-white/50 mt-0.5">Define tu rol objetivo y ubicación — las vacantes, el coach y LinkedIn serán mucho más precisos.</p>
+          </div>
+          <span className="text-xs text-violet-400 group-hover:translate-x-1 transition-transform shrink-0">Configurar →</span>
+        </Link>
+      )}
 
       {/* CTA si no hay CV */}
       {!hasResume && (
@@ -153,6 +169,19 @@ export default function DashboardPage() {
               </div>
             ))}
           </div>
+
+          {/* Evolución del ATS Score */}
+          {(summary.score_history?.length ?? 0) >= 2 && (
+            <div className="bg-white/5 border border-white/5 rounded-2xl p-6 mb-8">
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-sm font-medium text-white/70">Evolución de tu ATS Score</p>
+                <p className="text-xs text-white/35">
+                  {summary.score_history![0].ats_score} → <span className="text-emerald-400 font-semibold">{summary.score_history![summary.score_history!.length - 1].ats_score}</span>
+                </p>
+              </div>
+              <ScoreHistory data={summary.score_history!} />
+            </div>
+          )}
 
           {/* Radar + fortalezas/mejoras */}
           {!loadingInsights && insights && (
@@ -312,6 +341,36 @@ function RadarChart({ data }: { data: SkillRadar[] }) {
         return <text key={i} x={x} y={y} textAnchor="middle" dominantBaseline="central" fill="rgba(255,255,255,0.5)" fontSize="9">{d.label}</text>;
       })}
     </svg>
+  );
+}
+
+// ── Historial de ATS Score (barras SVG) ───────────────────────────────────
+function ScoreHistory({ data }: { data: ScorePoint[] }) {
+  const kindLabel: Record<string, string> = { original: "Original", optimized: "Optimizado", tailored: "Adaptado" };
+  const w = 640, h = 120, gap = 10;
+  const barW = Math.min(56, (w - gap * (data.length + 1)) / data.length);
+  const color = (s: number) => s >= 70 ? "#34d399" : s >= 50 ? "#fbbf24" : "#f87171";
+  return (
+    <div className="overflow-x-auto">
+      <svg viewBox={`0 0 ${w} ${h + 36}`} className="w-full" style={{ minWidth: data.length * 70 }}>
+        {data.map((p, i) => {
+          const x = gap + i * (barW + gap);
+          const barH = Math.max(6, (p.ats_score / 100) * h);
+          return (
+            <g key={i}>
+              <rect x={x} y={h - barH} width={barW} height={barH} rx={6} fill={color(p.ats_score)} opacity={0.85} />
+              <text x={x + barW / 2} y={h - barH - 6} textAnchor="middle" fill="#fff" fontSize="12" fontWeight="bold">{p.ats_score}</text>
+              <text x={x + barW / 2} y={h + 14} textAnchor="middle" fill="rgba(255,255,255,0.4)" fontSize="9">
+                {kindLabel[p.kind] ?? p.kind}
+              </text>
+              <text x={x + barW / 2} y={h + 27} textAnchor="middle" fill="rgba(255,255,255,0.25)" fontSize="8">
+                {new Date(p.created_at).toLocaleDateString("es-MX", { day: "numeric", month: "short" })}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
   );
 }
 

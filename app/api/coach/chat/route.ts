@@ -85,8 +85,29 @@ export async function POST(request: NextRequest) {
 
   const toolExecutor = createToolExecutor(userContext);
 
+  // Persistir cada documento generado por el coach en coach_artifacts
+  const ARTIFACT_TYPES: Record<string, string> = {
+    generate_seven_day_plan: "seven_day_plan",
+    generate_cold_message: "cold_message",
+    generate_cover_letter: "cover_letter",
+    generate_interview_prep: "interview_prep",
+    generate_follow_up: "follow_up",
+  };
+  const persistingExecutor = async (toolName: string, input: Record<string, unknown>): Promise<string> => {
+    const result = await toolExecutor(toolName, input);
+    const type = ARTIFACT_TYPES[toolName];
+    if (type) {
+      void serviceClient.from("coach_artifacts").insert({
+        user_id: user.id,
+        type,
+        content: { input, result },
+      });
+    }
+    return result;
+  };
+
   // Wrappear el stream para capturar la respuesta completa y guardarla
-  const rawStream = await streamCoachChat(messages, userContext, toolExecutor);
+  const rawStream = await streamCoachChat(messages, userContext, persistingExecutor);
 
   let assistantText = "";
   const encoder = new TextEncoder();
