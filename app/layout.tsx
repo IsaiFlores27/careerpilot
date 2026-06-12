@@ -5,9 +5,9 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "CareerPilot — Coach de Carrera con IA",
+  title: "CVitae — Coach de Carrera con IA",
   description:
-    "Optimiza tu CV, encuentra vacantes y consigue entrevistas más rápido con tu coach de carrera personalizado.",
+    "Optimiza tu CV, encuentra vacantes reales y consigue entrevistas más rápido con tu coach de carrera impulsado por IA.",
 };
 
 export default function RootLayout({
@@ -17,7 +17,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className="h-full">
-      <body className={`${inter.className} min-h-full bg-gray-50 text-gray-900`}>
+      <body className={`${inter.className} min-h-full bg-[#0f1117] text-white`}>
         {children}
       </body>
     </html>

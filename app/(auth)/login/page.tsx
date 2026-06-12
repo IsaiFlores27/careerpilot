@@ -17,15 +17,12 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError("");
-
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-
     if (error) {
       setError(error.message);
       setLoading(false);
       return;
     }
-
     router.push("/dashboard");
     router.refresh();
   }
@@ -38,67 +35,100 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold text-center text-blue-600">CareerPilot</h1>
-          <h2 className="mt-4 text-2xl font-semibold text-center text-gray-900">
-            Inicia sesión
+    <div className="min-h-screen flex bg-[#0f1117]">
+      {/* Panel izquierdo — decorativo */}
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-violet-900 via-indigo-900 to-[#0f1117] flex-col items-center justify-center p-12">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-violet-600/20 via-transparent to-transparent" />
+        <div className="relative z-10 max-w-md">
+          <div className="flex items-center gap-3 mb-12">
+            <div className="w-10 h-10 rounded-xl bg-violet-500 flex items-center justify-center font-bold text-white text-lg">C</div>
+            <span className="text-2xl font-bold text-white">CVitae</span>
+          </div>
+          <h2 className="text-4xl font-bold text-white leading-tight mb-6">
+            Tu carrera,<br />
+            <span className="text-violet-400">potenciada por IA</span>
           </h2>
+          <p className="text-white/60 text-lg mb-10">
+            Analiza tu CV, encuentra vacantes reales en internet y recibe coaching personalizado para conseguir más entrevistas.
+          </p>
+          <div className="space-y-4">
+            {[
+              { icon: "✦", text: "ATS Score y diagnóstico de tu CV" },
+              { icon: "✦", text: "Vacantes reales buscadas en Google" },
+              { icon: "✦", text: "Coach con IA disponible 24/7" },
+            ].map((item) => (
+              <div key={item.text} className="flex items-center gap-3 text-white/70">
+                <span className="text-violet-400 text-xs">{item.icon}</span>
+                <span className="text-sm">{item.text}</span>
+              </div>
+            ))}
+          </div>
         </div>
+        {/* Circles decorativos */}
+        <div className="absolute bottom-0 right-0 w-80 h-80 rounded-full bg-violet-600/10 translate-x-1/3 translate-y-1/3" />
+        <div className="absolute top-0 left-0 w-48 h-48 rounded-full bg-indigo-600/10 -translate-x-1/3 -translate-y-1/3" />
+      </div>
 
-        <form onSubmit={handleLogin} className="bg-white shadow-sm rounded-xl p-8 space-y-4 border border-gray-200">
+      {/* Panel derecho — formulario */}
+      <div className="flex-1 flex items-center justify-center px-6 py-12">
+        <div className="w-full max-w-sm">
+          {/* Logo mobile */}
+          <div className="flex items-center gap-2 mb-8 lg:hidden">
+            <div className="w-8 h-8 rounded-lg bg-violet-500 flex items-center justify-center font-bold text-white">C</div>
+            <span className="text-xl font-bold">CVitae</span>
+          </div>
+
+          <h1 className="text-2xl font-bold mb-1">Bienvenido de vuelta</h1>
+          <p className="text-white/50 text-sm mb-8">Inicia sesión para continuar</p>
+
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3">
+            <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-xl px-4 py-3 mb-6">
               {error}
             </div>
           )}
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="tu@email.com"
-            />
-          </div>
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className="block text-sm text-white/70 mb-1.5">Email</label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all"
+                placeholder="tu@email.com"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-white/70 mb-1.5">Contraseña</label>
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all"
+                placeholder="••••••••"
+              />
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="••••••••"
-            />
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-violet-600 hover:bg-violet-500 text-white py-3 rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+            >
+              {loading ? "Iniciando sesión..." : "Iniciar sesión"}
+            </button>
+          </form>
+
+          <div className="flex items-center gap-3 my-6">
+            <div className="flex-1 h-px bg-white/10" />
+            <span className="text-xs text-white/30">o continúa con</span>
+            <div className="flex-1 h-px bg-white/10" />
           </div>
 
           <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
-          >
-            {loading ? "Entrando..." : "Iniciar sesión"}
-          </button>
-
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase text-gray-400 bg-white px-2">
-              o continúa con
-            </div>
-          </div>
-
-          <button
-            type="button"
             onClick={handleGoogleLogin}
-            className="w-full border border-gray-300 text-gray-700 py-2.5 rounded-lg font-medium hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+            className="w-full bg-white/5 border border-white/10 hover:bg-white/10 text-white py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-3"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -108,14 +138,14 @@ export default function LoginPage() {
             </svg>
             Google
           </button>
-        </form>
 
-        <p className="text-center text-sm text-gray-600">
-          ¿No tienes cuenta?{" "}
-          <Link href="/register" className="text-blue-600 font-medium hover:underline">
-            Regístrate gratis
-          </Link>
-        </p>
+          <p className="text-center text-sm text-white/40 mt-8">
+            ¿No tienes cuenta?{" "}
+            <Link href="/register" className="text-violet-400 hover:text-violet-300 font-medium transition-colors">
+              Regístrate gratis
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );
