@@ -46,18 +46,23 @@ Devuelve ÚNICAMENTE un array JSON válido (sin texto adicional, sin markdown) c
 
 Encuentra entre 8 y 15 vacantes reales. NO inventes vacantes ni URLs: solo incluye las que realmente encuentres en las búsquedas.`;
 
-  const response = await client.models.generateContent({
-    model: GEMINI_MODELS.fast,
-    contents: prompt,
-    config: {
-      tools: [{ googleSearch: {} }],
-      // Nota: con grounding NO se puede usar responseSchema simultáneamente,
-      // así que pedimos JSON en el prompt y lo parseamos defensivamente.
-      maxOutputTokens: 8192,
-    },
-  });
+  let response;
+  try {
+    response = await client.models.generateContent({
+      model: GEMINI_MODELS.fast,
+      contents: prompt,
+      config: {
+        tools: [{ googleSearch: {} }],
+        maxOutputTokens: 8192,
+      },
+    });
+  } catch (err) {
+    console.error("[gemini-search] generateContent error:", err);
+    return [];
+  }
 
   const text = response.text ?? "";
+  console.log("[gemini-search] raw response length:", text.length, "| first 200:", text.slice(0, 200));
   const jobs = parseJobsFromText(text);
 
   // Recuperar las fuentes/URLs del grounding para enriquecer/validar

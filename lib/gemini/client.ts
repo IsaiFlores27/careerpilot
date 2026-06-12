@@ -14,10 +14,10 @@ export function getGeminiClient(): GoogleGenAI {
 
 // Modelos:
 // - quality: redacción/análisis de cara al usuario (CV, cartas, coach, LinkedIn)
-// - fast: búsqueda de vacantes con grounding (necesita capacidad + Google Search)
+// - fast: búsqueda de vacantes con grounding (Google Search) — requiere 2.0-flash o superior
 // - cheap: tareas mecánicas (scoring nocturno, follow-ups, clasificación)
 export const GEMINI_MODELS = {
-  quality: "gemini-3.5-flash",
-  fast: "gemini-3.5-flash",
-  cheap: "gemini-2.5-flash-lite",
+  quality: "gemini-2.0-flash",
+  fast:    "gemini-2.0-flash",
+  cheap:   "gemini-2.0-flash-lite",
 } as const;
