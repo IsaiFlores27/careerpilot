@@ -1,15 +1,40 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+
+const ANALYZE_STEPS = [
+  { label: "Leyendo el documento...", pct: 15 },
+  { label: "Extrayendo perfil y experiencia...", pct: 35 },
+  { label: "Identificando habilidades y keywords...", pct: 55 },
+  { label: "Calculando ATS Score...", pct: 72 },
+  { label: "Detectando bullets débiles...", pct: 88 },
+  { label: "Generando diagnóstico...", pct: 96 },
+];
 
 export default function CvPage() {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
+  const [analyzeStep, setAnalyzeStep] = useState(0);
+  const [analyzePct, setAnalyzePct] = useState(0);
   const [error, setError] = useState("");
   const [dragOver, setDragOver] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    if (!analyzing) { setAnalyzeStep(0); setAnalyzePct(0); return; }
+    let i = 0;
+    const tick = () => {
+      if (i >= ANALYZE_STEPS.length) return;
+      setAnalyzeStep(i);
+      setAnalyzePct(ANALYZE_STEPS[i].pct);
+      i++;
+    };
+    tick();
+    const id = setInterval(tick, 3000);
+    return () => clearInterval(id);
+  }, [analyzing]);
 
   async function handleUpload(e: React.FormEvent) {
     e.preventDefault();
@@ -155,9 +180,30 @@ export default function CvPage() {
         </form>
 
         {analyzing && (
-          <div className="mt-4 bg-violet-500/5 border border-violet-500/20 rounded-xl px-5 py-4">
-            <p className="text-sm text-violet-300 font-medium">La IA está procesando tu CV</p>
-            <p className="text-xs text-white/40 mt-1">Extrayendo perfil, calculando ATS Score y detectando mejoras. Puede tomar ~20 segundos.</p>
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+            <div className="bg-[#1a1d2e] border border-white/10 rounded-2xl p-8 w-full max-w-sm shadow-2xl">
+              <div className="w-14 h-14 rounded-2xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center mx-auto mb-6">
+                <svg className="w-7 h-7 text-violet-400 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+              </div>
+              <h3 className="text-white font-semibold text-center mb-1">Analizando tu CV</h3>
+              <p className="text-white/40 text-xs text-center mb-6">La IA está procesando tu documento</p>
+              <p className="text-violet-300 text-sm text-center mb-4 min-h-[20px]">
+                {ANALYZE_STEPS[analyzeStep]?.label}
+              </p>
+              <div className="w-full bg-white/5 rounded-full h-2 overflow-hidden">
+                <div
+                  className="h-2 bg-gradient-to-r from-violet-600 to-indigo-500 rounded-full transition-all duration-700 ease-out"
+                  style={{ width: `${analyzePct}%` }}
+                />
+              </div>
+              <div className="flex justify-between mt-2">
+                <span className="text-xs text-white/25">~20 segundos</span>
+                <span className="text-xs text-violet-400">{analyzePct}%</span>
+              </div>
+            </div>
           </div>
         )}
 
