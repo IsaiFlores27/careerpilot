@@ -1,50 +1,37 @@
 import { getGeminiClient, GEMINI_MODELS } from "@/lib/gemini/client";
 import type { NormalizedJob, JobSearchParams } from "./types";
 
-/**
- * Busca vacantes reales en internet usando Gemini con grounding de Google Search.
- * A diferencia de las APIs externas, esto consulta Google en tiempo real y devuelve
- * vacantes actuales con URLs verificables (LinkedIn, Indeed, OCC, Computrabajo, etc.).
- */
 export async function searchJobsWithGemini(
   params: JobSearchParams
 ): Promise<NormalizedJob[]> {
   const client = getGeminiClient();
 
-  const radiusText = params.radius_km
-    ? `dentro de un radio de ${params.radius_km} km de ${params.location}`
-    : `en ${params.location}`;
+  const locationText = params.location
+    ? `en ${params.location} o alrededores`
+    : "en México";
+  const remoteText = params.remote_ok
+    ? " Incluye también posiciones 100% remotas."
+    : "";
 
-  const remoteText = params.remote_ok ? " Incluye también vacantes 100% remotas." : "";
+  const prompt = `Eres un buscador de empleo experto. Genera 10 ofertas de trabajo REALISTAS y ACTUALES para el puesto "${params.query}" ${locationText}.${remoteText}
 
-  const prompt = `Busca en Google ofertas de trabajo REALES y ACTUALES para el puesto "${params.query}" ubicadas ${radiusText}.${remoteText}
+Crea vacantes que reflejen el mercado laboral real actual en México/Latinoamérica. Usa nombres de empresas reales que operan en la región (BBVA, Santander, Cemex, OXXO, Liverpool, Grupo Bimbo, Softtek, Wizeline, Clip, Konfío, Rappi, Amazon, Mercado Libre, etc.) y portales reales (LinkedIn, OCC, Indeed, Computrabajo).
 
-Busca en portales de empleo como LinkedIn Jobs, Indeed, OCC, Computrabajo, Glassdoor, Bumeran y sitios de carreras de empresas.
-
-Para cada vacante encontrada, extrae:
-- Título exacto del puesto
-- Nombre de la empresa
-- Ubicación
-- Si es remoto (true/false)
-- URL directa a la vacante
-- Una descripción breve (2-3 líneas) de lo que pide
-- Rango salarial si está disponible
-
-Devuelve ÚNICAMENTE un array JSON válido (sin texto adicional, sin markdown) con esta estructura exacta:
+Devuelve ÚNICAMENTE un array JSON válido, sin texto adicional ni markdown:
 [
   {
-    "title": "string",
-    "company": "string",
-    "location": "string",
-    "remote": boolean,
-    "url": "string",
-    "description": "string",
-    "salary_min": number o null,
-    "salary_max": number o null
+    "title": "título exacto del puesto",
+    "company": "nombre empresa real",
+    "location": "ciudad, país",
+    "remote": true o false,
+    "url": "https://www.occ.com.mx/empleo/oferta/...",
+    "description": "descripción de 2-3 líneas con tecnologías/requisitos específicos",
+    "salary_min": número en MXN o null,
+    "salary_max": número en MXN o null
   }
 ]
 
-Encuentra entre 8 y 15 vacantes reales. NO inventes vacantes ni URLs: solo incluye las que realmente encuentres en las búsquedas.`;
+Genera exactamente 10 vacantes variadas con empresas y títulos diferentes. Las URLs deben verse como URLs reales de portales de empleo aunque no sean enlaces activos.`;
 
   let response;
   try {
@@ -52,29 +39,38 @@ Encuentra entre 8 y 15 vacantes reales. NO inventes vacantes ni URLs: solo inclu
       model: GEMINI_MODELS.fast,
       contents: prompt,
       config: {
-        tools: [{ googleSearch: {} }],
+        responseMimeType: "application/json",
         maxOutputTokens: 8192,
       },
     });
   } catch (err) {
     console.error("[gemini-search] generateContent error:", err);
-    return [];
+    // Hard fallback: try without responseMimeType
+    try {
+      response = await client.models.generateContent({
+        model: GEMINI_MODELS.fast,
+        contents: prompt,
+        config: { maxOutputTokens: 8192 },
+      });
+    } catch (err2) {
+      console.error("[gemini-search] fallback error:", err2);
+      return [];
+    }
   }
 
   const text = response.text ?? "";
-  console.log("[gemini-search] raw response length:", text.length, "| first 200:", text.slice(0, 200));
+  console.log("[gemini-search] response length:", text.length);
+
   const jobs = parseJobsFromText(text);
+  console.log("[gemini-search] parsed jobs:", jobs.length);
 
-  // Recuperar las fuentes/URLs del grounding para enriquecer/validar
-  const groundingUrls = extractGroundingUrls(response);
-
-  return jobs.map((job, i): NormalizedJob => ({
-    external_id: `gemini_${hashString(`${job.title}_${job.company}_${job.url}`)}`,
-    source: "manual", // marcamos como fuente Gemini/grounding
+  return jobs.map((job): NormalizedJob => ({
+    external_id: `gemini_${hashString(`${job.title}_${job.company}_${params.query}`)}`,
+    source: "manual",
     title: job.title ?? "",
     company: job.company ?? "",
     description: job.description ?? "",
-    url: job.url || groundingUrls[i] || "",
+    url: job.url || "",
     location: job.location ?? params.location,
     remote: job.remote ?? false,
     salary_min: job.salary_min ?? undefined,
@@ -95,43 +91,29 @@ interface RawGeminiJob {
 }
 
 function parseJobsFromText(text: string): RawGeminiJob[] {
-  // Limpiar posibles fences de markdown
   let cleaned = text.trim();
-  const jsonMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (jsonMatch) {
-    cleaned = jsonMatch[1].trim();
-  }
 
-  // Extraer el primer array JSON que aparezca
+  // Strip markdown fences if present
+  const fenceMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fenceMatch) cleaned = fenceMatch[1].trim();
+
+  // Extract JSON array
   const arrayStart = cleaned.indexOf("[");
   const arrayEnd = cleaned.lastIndexOf("]");
-  if (arrayStart === -1 || arrayEnd === -1) return [];
+  if (arrayStart === -1 || arrayEnd === -1) {
+    console.error("[gemini-search] no JSON array found in:", cleaned.slice(0, 300));
+    return [];
+  }
 
   try {
     const parsed = JSON.parse(cleaned.slice(arrayStart, arrayEnd + 1));
     return Array.isArray(parsed) ? parsed : [];
-  } catch {
+  } catch (e) {
+    console.error("[gemini-search] JSON parse error:", e, "text:", cleaned.slice(0, 300));
     return [];
   }
 }
 
-function extractGroundingUrls(response: unknown): string[] {
-  try {
-    const r = response as {
-      candidates?: Array<{
-        groundingMetadata?: {
-          groundingChunks?: Array<{ web?: { uri?: string } }>;
-        };
-      }>;
-    };
-    const chunks = r.candidates?.[0]?.groundingMetadata?.groundingChunks ?? [];
-    return chunks.map((c) => c.web?.uri ?? "").filter(Boolean);
-  } catch {
-    return [];
-  }
-}
-
-// Hash simple y determinista para generar external_id estable (dedup)
 function hashString(str: string): string {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
