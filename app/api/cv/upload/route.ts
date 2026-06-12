@@ -16,15 +16,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No se recibió archivo" }, { status: 400 });
   }
 
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+  const allowedExts = ["pdf", "doc", "docx"];
   const allowedTypes = [
     "application/pdf",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     "application/msword",
+    "application/octet-stream",
+    "",
   ];
 
-  if (!allowedTypes.includes(file.type)) {
+  if (!allowedExts.includes(ext) && !allowedTypes.includes(file.type)) {
     return NextResponse.json(
-      { error: "Solo se aceptan archivos PDF o Word (.docx)" },
+      { error: `Tipo no permitido: ${file.type || "desconocido"} (.${ext}). Solo PDF o Word.` },
       { status: 400 }
     );
   }
@@ -38,8 +42,7 @@ export async function POST(request: NextRequest) {
 
   // Subir a Supabase Storage (bucket privado)
   const serviceClient = await createServiceClient();
-  const ext = file.name.split(".").pop() ?? "pdf";
-  const storagePath = `${user.id}/${Date.now()}.${ext}`;
+  const storagePath = `${user.id}/${Date.now()}.${ext || "pdf"}`;
 
   const arrayBuffer = await file.arrayBuffer();
   const { error: uploadError } = await serviceClient.storage
@@ -50,8 +53,8 @@ export async function POST(request: NextRequest) {
     });
 
   if (uploadError) {
-    console.error("Storage error:", uploadError);
-    return NextResponse.json({ error: "Error al subir el archivo" }, { status: 500 });
+    console.error("Storage error:", JSON.stringify(uploadError));
+    return NextResponse.json({ error: `Storage: ${uploadError.message}` }, { status: 500 });
   }
 
   // Crear registro en BD con estado pendiente (el análisis se hace aparte)
@@ -67,8 +70,8 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (dbError) {
-    console.error("DB error:", dbError);
-    return NextResponse.json({ error: "Error al registrar el CV" }, { status: 500 });
+    console.error("DB error:", JSON.stringify(dbError));
+    return NextResponse.json({ error: `DB: ${dbError.message}` }, { status: 500 });
   }
 
   return NextResponse.json({ resume_id: resume.id, storage_path: storagePath });
