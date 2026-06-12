@@ -3,5 +3,11 @@
     { "path": "/api/cron/job-alerts",           "schedule": "0 7 * * *" },
     { "path": "/api/cron/follow-up-reminders",  "schedule": "0 9 * * *" },
     { "path": "/api/cron/weekly-report",        "schedule": "0 8 * * 1" }
-  ]
+  ],
+  "functions": {
+    "app/api/cv/render/route.ts": { "memory": 1024, "maxDuration": 30 },
+    "app/api/cv/analyze/route.ts": { "memory": 512, "maxDuration": 60 },
+    "app/api/cv/optimize/route.ts": { "memory": 512, "maxDuration": 60 },
+    "app/api/coach/chat/route.ts": { "memory": 512, "maxDuration": 60 }
+  }
 }
