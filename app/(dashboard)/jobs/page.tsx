@@ -184,7 +184,7 @@ export default function JobsPage() {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-start justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-white">Vacantes para ti</h1>
           <p className="text-white/40 text-sm mt-1">Basadas en tu CV activo · guarda, descarta o postúlate</p>

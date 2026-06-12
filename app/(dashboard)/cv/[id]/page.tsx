@@ -40,7 +40,7 @@ export default async function CvDetailPage({ params }: Props) {
       </div>
 
       {/* Score card */}
-      <div className={`bg-gradient-to-r ${scoreBg} to-transparent border rounded-2xl p-6 mb-6 flex items-center justify-between`}>
+      <div className={`bg-gradient-to-r ${scoreBg} to-transparent border rounded-2xl p-5 sm:p-6 mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4`}>
         <div>
           <p className="text-xs text-white/40 mb-1">ATS Score</p>
           <div className="flex items-end gap-2">
@@ -52,7 +52,7 @@ export default async function CvDetailPage({ params }: Props) {
             <p className="text-xs text-white/40 mt-1 max-w-sm">{diagnosis.overall_assessment}</p>
           )}
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-3 shrink-0">
           <DownloadCvButton resumeId={id} profile={profile} />
           {resume.kind !== "tailored" && <OptimizeCvButton resumeId={id} />}
         </div>

@@ -90,14 +90,14 @@ export function TemplatePicker({ resumeId, profile, onClose }: Props) {
         </div>
 
         {/* Body */}
-        <div className="flex flex-1 min-h-0 overflow-hidden">
+        <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-hidden">
           {/* Template cards */}
-          <div className="w-72 flex-shrink-0 overflow-y-auto border-r border-white/10 p-4 space-y-3">
+          <div className="md:w-72 flex-shrink-0 overflow-x-auto md:overflow-y-auto border-b md:border-b-0 md:border-r border-white/10 p-4 flex md:block gap-3 md:gap-0 md:space-y-3">
             {TEMPLATES.map(tpl => (
               <button
                 key={tpl.id}
                 onClick={() => setSelected(tpl.id)}
-                className={`w-full text-left rounded-xl border p-3 transition-all ${
+                className={`w-56 md:w-full shrink-0 text-left rounded-xl border p-3 transition-all ${
                   selected === tpl.id
                     ? "border-violet-500 bg-violet-500/10"
                     : "border-white/8 hover:border-white/20 bg-white/3"
@@ -110,9 +110,9 @@ export function TemplatePicker({ resumeId, profile, onClose }: Props) {
           </div>
 
           {/* Preview */}
-          <div className="flex-1 overflow-auto bg-[#0d0f18] p-6 flex items-start justify-center">
+          <div className="flex-1 overflow-auto bg-[#0d0f18] p-4 md:p-6 flex items-start justify-center">
             <div
-              className="origin-top scale-[0.72] bg-white shadow-2xl"
+              className="origin-top scale-[0.5] sm:scale-[0.6] md:scale-[0.72] bg-white shadow-2xl"
               style={{ width: 612, minHeight: 792, transformOrigin: "top center" }}
             >
               {selectedTpl.preview(profile)}

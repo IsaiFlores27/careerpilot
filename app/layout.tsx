@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 
@@ -8,6 +8,12 @@ export const metadata: Metadata = {
   title: "CVitae — Coach de Carrera con IA",
   description:
     "Optimiza tu CV, encuentra vacantes reales y consigue entrevistas más rápido con tu coach de carrera impulsado por IA.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
 };
 
 export default function RootLayout({

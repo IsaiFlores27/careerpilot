@@ -169,7 +169,7 @@ export default function CvPage() {
         </div>
       )}
 
-      <div className="mb-8 flex items-start justify-between">
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-white">Mi CV</h1>
           <p className="text-white/40 text-sm mt-1">Sube tu CV en PDF o Word. Lo analizamos con IA y obtienes un diagnóstico ATS completo.</p>

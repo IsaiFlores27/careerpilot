@@ -105,7 +105,7 @@ export default function ApplicationsPage() {
 
   return (
     <div>
-      <div className="mb-8 flex items-start justify-between">
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-white">Pipeline de postulaciones</h1>
           <p className="text-white/40 text-sm mt-1">Registra cada vacante, actualiza el estado y nunca olvides un seguimiento.</p>

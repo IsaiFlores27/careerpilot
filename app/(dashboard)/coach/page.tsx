@@ -100,15 +100,15 @@ export default function CoachPage() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)]">
+    <div className="flex flex-col h-[calc(100vh-7rem)] md:h-[calc(100vh-5rem)]">
       {/* Header */}
       <div className="mb-5 shrink-0">
         <h1 className="text-2xl font-bold text-white">Coach IA</h1>
-        <p className="text-white/40 text-sm mt-1">Plan · Mensajes en frío · Cartas · Prep de entrevista · Follow-ups</p>
+        <p className="text-white/40 text-sm mt-1">Plan · Mensajes · Cartas · Prep de entrevista · Follow-ups</p>
       </div>
 
       {/* Mensajes */}
-      <div className="flex-1 overflow-y-auto space-y-4 pb-4 pr-2">
+      <div className="flex-1 overflow-y-auto space-y-4 pb-4 pr-1 md:pr-2">
         {loadingHistory && (
           <div className="flex justify-center py-6">
             <span className="text-xs text-white/25">Cargando historial...</span>
@@ -122,7 +122,7 @@ export default function CoachPage() {
               </div>
             )}
             <div
-              className={`max-w-[78%] rounded-2xl px-4 py-3 text-sm whitespace-pre-wrap leading-relaxed ${
+              className={`max-w-[85%] md:max-w-[78%] rounded-2xl px-4 py-3 text-sm whitespace-pre-wrap leading-relaxed ${
                 msg.role === "user"
                   ? "bg-violet-600/20 border border-violet-500/30 text-white rounded-tr-sm"
                   : "bg-white/5 border border-white/5 text-white/80 rounded-tl-sm"
