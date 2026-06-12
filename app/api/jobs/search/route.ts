@@ -28,27 +28,27 @@ export async function POST(request: NextRequest) {
   const profile = profileResult.data;
   const resume = resumeResult.data;
 
-  if (!profile || !resume?.structured) {
+  if (!resume?.structured) {
     return NextResponse.json(
-      { error: "Primero completa tu perfil y sube un CV" },
+      { error: "Primero sube y analiza tu CV para poder buscar vacantes" },
       { status: 400 }
     );
   }
 
-  // Construir query desde el perfil del usuario
+  // Construir query desde perfil o directamente del CV
   const query =
-    profile.target_role ??
+    profile?.target_role ??
     resume.structured.headline ??
     resume.structured.experience?.[0]?.role ??
-    "software engineer";
+    "profesional";
 
   const jobs = await searchAllSources({
     query,
-    location: profile.location ?? "",
-    lat: profile.lat,
-    lng: profile.lng,
-    radius_km: profile.search_radius_km ?? 25,
-    remote_ok: profile.remote_ok ?? true,
+    location: profile?.location ?? "",
+    lat: profile?.lat,
+    lng: profile?.lng,
+    radius_km: profile?.search_radius_km ?? 25,
+    remote_ok: profile?.remote_ok ?? true,
     limit: 15,
   });
 
