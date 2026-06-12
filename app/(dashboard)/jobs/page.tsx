@@ -49,6 +49,9 @@ export default function JobsPage() {
   const [tailoring, setTailoring] = useState<Job | null>(null);    // job en proceso de tailor
   const [tailorStep, setTailorStep] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchLocation, setSearchLocation] = useState("");
+  const [lastSearchMeta, setLastSearchMeta] = useState<{ real: number; ai: number; profileComplete: boolean } | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -86,7 +89,11 @@ export default function JobsPage() {
 
   async function handleSearch() {
     setLoading(true);
-    const res = await fetch("/api/jobs/search", { method: "POST" });
+    const res = await fetch("/api/jobs/search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query: searchQuery, location: searchLocation }),
+    });
     if (res.ok) {
       const data = await res.json();
       // Conservar las guardadas que ya teníamos y agregar las nuevas sugeridas
@@ -94,6 +101,7 @@ export default function JobsPage() {
       const savedIds = new Set(savedJobs.map((j) => j.external_id));
       const fresh = (data.jobs ?? []).filter((j: Job) => !savedIds.has(j.external_id));
       setJobs([...fresh, ...savedJobs]);
+      setLastSearchMeta({ real: data.real_count ?? 0, ai: data.ai_count ?? 0, profileComplete: data.profile_complete ?? false });
       setTab("suggested");
     }
     setLoading(false);
@@ -198,6 +206,63 @@ export default function JobsPage() {
           )}
         </button>
       </div>
+
+      {/* Barra de búsqueda manual */}
+      <div className="flex gap-2 mb-4 flex-wrap">
+        <div className="flex-1 min-w-[200px] relative">
+          <svg className="w-4 h-4 text-white/25 absolute left-3.5 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && !loading) handleSearch(); }}
+            placeholder="Puesto a buscar (vacío = usa tu perfil)"
+            className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-white/25 focus:border-violet-500/50 focus:outline-none"
+          />
+        </div>
+        <input
+          value={searchLocation}
+          onChange={(e) => setSearchLocation(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && !loading) handleSearch(); }}
+          placeholder="Ubicación (opcional)"
+          className="w-48 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-white/25 focus:border-violet-500/50 focus:outline-none"
+        />
+      </div>
+
+      {/* Metadata de la última búsqueda */}
+      {lastSearchMeta && !loading && (
+        <div className="mb-5 flex items-center gap-3 flex-wrap text-xs">
+          {lastSearchMeta.real > 0 && (
+            <span className="text-emerald-400/80 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              {lastSearchMeta.real} vacantes reales (LinkedIn, Indeed, OCC…)
+            </span>
+          )}
+          {lastSearchMeta.ai > 0 && (
+            <span className="text-white/35 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-white/30" />
+              {lastSearchMeta.ai} sugerencias IA
+            </span>
+          )}
+          {lastSearchMeta.real === 0 && lastSearchMeta.ai > 0 && (
+            <span className="text-amber-400/70">· No hay fuente de vacantes reales configurada — mostrando solo sugerencias IA</span>
+          )}
+        </div>
+      )}
+
+      {/* Aviso perfil incompleto */}
+      {lastSearchMeta && !lastSearchMeta.profileComplete && !loading && (
+        <div className="mb-5 bg-violet-600/10 border border-violet-500/25 rounded-xl px-4 py-3 flex items-center gap-3">
+          <svg className="w-4 h-4 text-violet-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <p className="text-xs text-violet-200 flex-1">
+            Define tu <strong>rol objetivo</strong> y <strong>ubicación</strong> en tu perfil para mejores resultados.
+          </p>
+          <a href="/profile" className="text-xs text-violet-300 hover:text-violet-200 shrink-0">Completar perfil →</a>
+        </div>
+      )}
 
       {/* Tabs */}
       {jobs.length > 0 && (

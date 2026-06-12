@@ -10,6 +10,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
+  // Filtros opcionales desde el frontend (búsqueda manual)
+  const body = await request.json().catch(() => ({}));
+  const queryOverride = typeof body.query === "string" ? body.query.trim() : "";
+  const locationOverride = typeof body.location === "string" ? body.location.trim() : "";
+
   const serviceClient = await createServiceClient();
 
   // Cargar perfil (incluye active_resume_id si ya se aplicó la migración)
@@ -39,16 +44,20 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Construir query desde perfil o directamente del CV
+  // Construir query: 1) lo que escribió el usuario, 2) rol objetivo del perfil,
+  // 3) headline del CV, 4) rol del puesto más reciente.
   const query =
-    profile?.target_role ??
-    resume.structured.headline ??
-    resume.structured.experience?.[0]?.role ??
+    queryOverride ||
+    profile?.target_role ||
+    resume.structured.headline ||
+    resume.structured.experience?.[0]?.role ||
     "profesional";
+
+  const location = locationOverride || profile?.location || resume.structured.contact?.location || "";
 
   const jobs = await searchAllSources({
     query,
-    location: profile?.location ?? "",
+    location,
     lat: profile?.lat,
     lng: profile?.lng,
     radius_km: profile?.search_radius_km ?? 25,
@@ -93,5 +102,16 @@ export async function POST(request: NextRequest) {
     applied: false,
   }));
 
-  return NextResponse.json({ jobs: jobsWithIds, total: jobs.length });
+  // Contar cuántas son reales vs. sugerencias IA (para mostrarlo en la UI)
+  const realCount = jobs.filter((j) => j.source !== "manual").length;
+
+  return NextResponse.json({
+    jobs: jobsWithIds,
+    total: jobs.length,
+    real_count: realCount,
+    ai_count: jobs.length - realCount,
+    query_used: query,
+    location_used: location,
+    profile_complete: !!(profile?.target_role && profile?.location),
+  });
 }
