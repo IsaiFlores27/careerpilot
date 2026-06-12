@@ -3,10 +3,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { renderToBuffer } = require("@react-pdf/renderer");
-import { CvDocument } from "@/lib/pdf/renderer";
-import React from "react";
+import { buildCvPdf } from "@/lib/pdf/renderer";
 
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
@@ -36,19 +33,17 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "CV no encontrado" }, { status: 404 });
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-  const pdfBuffer = await renderToBuffer(
-    React.createElement(CvDocument, { profile: resume.structured })
-  ) as Buffer;
+  const pdfBytes = await buildCvPdf(resume.structured);
+  const pdfBuffer = Buffer.from(pdfBytes);
 
-  const filename = `CV_${resume.structured.contact?.name?.replace(/\s+/g, "_") ?? "CareerPilot"}.pdf`;
-  const uint8Array = new Uint8Array(pdfBuffer);
+  const name = resume.structured.contact?.name?.replace(/\s+/g, "_") ?? "CV";
+  const filename = `CV_${name}.pdf`;
 
-  return new NextResponse(uint8Array, {
+  return new NextResponse(pdfBuffer, {
     headers: {
       "Content-Type": "application/pdf",
       "Content-Disposition": `attachment; filename="${filename}"`,
-      "Content-Length": String(uint8Array.length),
+      "Content-Length": String(pdfBytes.length),
     },
   });
 }
