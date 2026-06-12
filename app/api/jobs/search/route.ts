@@ -12,20 +12,24 @@ export async function POST(request: NextRequest) {
 
   const serviceClient = await createServiceClient();
 
-  // Cargar el perfil del usuario y su CV optimizado
-  const [profileResult, resumeResult] = await Promise.all([
-    serviceClient.from("profiles").select("*").eq("id", user.id).single(),
-    serviceClient
-      .from("resumes")
-      .select("id, structured")
-      .eq("user_id", user.id)
-      .in("kind", ["optimized", "original"])
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single(),
-  ]);
-
+  // Cargar perfil (incluye active_resume_id si ya se aplicó la migración)
+  const profileResult = await serviceClient
+    .from("profiles").select("*").eq("id", user.id).single();
   const profile = profileResult.data;
+
+  // Usar CV activo si está definido, si no el más reciente
+  const activeId = (profile as Record<string, unknown>)?.active_resume_id as string | undefined;
+  const resumeQuery = serviceClient
+    .from("resumes")
+    .select("id, structured")
+    .eq("user_id", user.id)
+    .in("kind", ["optimized", "original"])
+    .order("created_at", { ascending: false })
+    .limit(1);
+  const resumeResult = activeId
+    ? await serviceClient.from("resumes").select("id, structured").eq("id", activeId).single()
+    : await resumeQuery.single();
+
   const resume = resumeResult.data;
 
   if (!resume?.structured) {

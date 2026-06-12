@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 
 export async function GET() {
   const supabase = await createClient();
@@ -12,15 +12,25 @@ export async function GET() {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  const { data: resumes, error } = await supabase
-    .from("resumes")
-    .select("id, kind, ats_score, original_filename, created_at, structured")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false });
+  const serviceClient = await createServiceClient();
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
+  const [resumesResult, profileResult] = await Promise.all([
+    serviceClient
+      .from("resumes")
+      .select("id, kind, ats_score, original_filename, created_at, structured")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false }),
+    serviceClient
+      .from("profiles")
+      .select("active_resume_id")
+      .eq("id", user.id)
+      .single(),
+  ]);
 
-  return NextResponse.json({ resumes: resumes ?? [] });
+  const active_resume_id = (profileResult.data as Record<string, unknown> | null)?.active_resume_id ?? null;
+
+  return NextResponse.json({
+    resumes: resumesResult.data ?? [],
+    active_resume_id,
+  });
 }

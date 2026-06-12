@@ -12,17 +12,20 @@ export async function POST(request: NextRequest) {
 
   const serviceClient = await createServiceClient();
 
-  const [resumeResult, profileResult] = await Promise.all([
-    serviceClient
-      .from("resumes")
-      .select("structured")
-      .eq("user_id", user.id)
-      .in("kind", ["optimized", "original"])
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single(),
-    serviceClient.from("profiles").select("target_role, target_industry").eq("id", user.id).single(),
-  ]);
+  const profileResult = await serviceClient
+    .from("profiles").select("target_role, target_industry, active_resume_id").eq("id", user.id).single();
+  const activeId = (profileResult.data as Record<string, unknown>)?.active_resume_id as string | undefined;
+
+  const resumeResult = activeId
+    ? await serviceClient.from("resumes").select("structured").eq("id", activeId).single()
+    : await serviceClient
+        .from("resumes")
+        .select("structured")
+        .eq("user_id", user.id)
+        .in("kind", ["optimized", "original"])
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
 
   if (!resumeResult.data?.structured) {
     return NextResponse.json({ error: "Primero sube y analiza tu CV" }, { status: 400 });

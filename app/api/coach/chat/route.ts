@@ -19,16 +19,21 @@ export async function POST(request: NextRequest) {
   const serviceClient = await createServiceClient();
 
   // Cargar contexto del usuario
-  const [resumeResult, profileResult, pipelineResult] = await Promise.all([
-    serviceClient
-      .from("resumes")
-      .select("structured")
-      .eq("user_id", user.id)
-      .in("kind", ["optimized", "original"])
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single(),
-    serviceClient.from("profiles").select("*").eq("id", user.id).single(),
+  const profileResult = await serviceClient.from("profiles").select("*").eq("id", user.id).single();
+  const profileData = profileResult.data;
+  const activeId = (profileData as Record<string, unknown>)?.active_resume_id as string | undefined;
+
+  const [resumeResult, pipelineResult] = await Promise.all([
+    activeId
+      ? serviceClient.from("resumes").select("structured").eq("id", activeId).single()
+      : serviceClient
+          .from("resumes")
+          .select("structured")
+          .eq("user_id", user.id)
+          .in("kind", ["optimized", "original"])
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single(),
     serviceClient
       .from("applications")
       .select("status, applied_at, jobs(title, company)")
@@ -44,7 +49,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const profile = profileResult.data;
+  const profile = profileData;
   const cvProfile = resumeResult.data.structured;
 
   const pipeline = pipelineResult.data?.map((app) => {
