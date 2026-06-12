@@ -5,30 +5,44 @@ import { searchJobsWithGemini } from "./gemini-search";
 import type { NormalizedJob, JobSearchParams } from "./types";
 
 /**
- * Busca vacantes combinando:
- *  1. Gemini con Google Search grounding (fuente principal — busca en internet en vivo)
- *  2. APIs externas (JSearch/Adzuna/Jooble) como complemento, solo si tienen API key
+ * Busca vacantes priorizando fuentes REALES:
+ *  1. APIs externas (JSearch/Adzuna/Jooble) — vacantes actuales con URL real de postulación
+ *  2. Gemini (sugerencias IA) — solo como complemento si las fuentes reales traen pocas
  *
- * Todo corre en paralelo; si una fuente falla, no rompe las demás.
+ * Las fuentes reales corren en paralelo; si juntan suficientes resultados,
+ * ni siquiera se llama a Gemini (ahorra cuota y maximiza calidad).
  */
+const MIN_REAL_JOBS_TO_SKIP_AI = 6;
+
 export async function searchAllSources(params: JobSearchParams): Promise<NormalizedJob[]> {
-  const tasks: Array<Promise<NormalizedJob[]>> = [
-    // Gemini siempre se ejecuta (fuente principal)
-    searchJobsWithGemini(params),
-  ];
+  const realTasks: Array<Promise<NormalizedJob[]>> = [];
+  if (process.env.RAPIDAPI_KEY) realTasks.push(searchJSearch(params));
+  if (process.env.ADZUNA_APP_ID && process.env.ADZUNA_APP_KEY) realTasks.push(searchAdzuna(params));
+  if (process.env.JOOBLE_API_KEY) realTasks.push(searchJooble(params));
 
-  // Las APIs externas solo si están configuradas (evita llamadas inútiles)
-  if (process.env.RAPIDAPI_KEY) tasks.push(searchJSearch(params));
-  if (process.env.ADZUNA_APP_ID && process.env.ADZUNA_APP_KEY) tasks.push(searchAdzuna(params));
-  if (process.env.JOOBLE_API_KEY) tasks.push(searchJooble(params));
+  let realJobs: NormalizedJob[] = [];
+  if (realTasks.length > 0) {
+    const settled = await Promise.allSettled(realTasks);
+    realJobs = deduplicateJobs(
+      settled.flatMap((r) => (r.status === "fulfilled" ? r.value : []))
+    );
+  }
 
-  const settled = await Promise.allSettled(tasks);
+  // Suficientes vacantes reales → no generamos sugerencias IA
+  if (realJobs.length >= MIN_REAL_JOBS_TO_SKIP_AI) {
+    return realJobs;
+  }
 
-  const all: NormalizedJob[] = settled.flatMap((r) =>
-    r.status === "fulfilled" ? r.value : []
-  );
+  // Complementar con sugerencias IA (etiquetadas como source 'manual' en la UI)
+  let aiJobs: NormalizedJob[] = [];
+  try {
+    aiJobs = await searchJobsWithGemini(params);
+  } catch {
+    // si Gemini falla, devolvemos lo real que haya
+  }
 
-  return deduplicateJobs(all);
+  // Reales primero, sugerencias IA después
+  return deduplicateJobs([...realJobs, ...aiJobs]);
 }
 
 function deduplicateJobs(jobs: NormalizedJob[]): NormalizedJob[] {
@@ -41,9 +55,9 @@ function deduplicateJobs(jobs: NormalizedJob[]): NormalizedJob[] {
     if (!seen.has(key)) {
       seen.set(key, job);
     } else {
-      // Prefiere JSearch (más datos) sobre Jooble
+      // Prefiere fuentes reales (jsearch/adzuna/jooble) sobre sugerencias IA
       const existing = seen.get(key)!;
-      if (job.source === "jsearch" && existing.source !== "jsearch") {
+      if (existing.source === "manual" && job.source !== "manual") {
         seen.set(key, job);
       }
     }
