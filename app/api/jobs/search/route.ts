@@ -1,0 +1,83 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { searchAllSources } from "@/lib/jobs/aggregator";
+
+export async function POST(request: NextRequest) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
+  const serviceClient = await createServiceClient();
+
+  // Cargar el perfil del usuario y su CV optimizado
+  const [profileResult, resumeResult] = await Promise.all([
+    serviceClient.from("profiles").select("*").eq("id", user.id).single(),
+    serviceClient
+      .from("resumes")
+      .select("id, structured")
+      .eq("user_id", user.id)
+      .in("kind", ["optimized", "original"])
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single(),
+  ]);
+
+  const profile = profileResult.data;
+  const resume = resumeResult.data;
+
+  if (!profile || !resume?.structured) {
+    return NextResponse.json(
+      { error: "Primero completa tu perfil y sube un CV" },
+      { status: 400 }
+    );
+  }
+
+  // Construir query desde el perfil del usuario
+  const query =
+    profile.target_role ??
+    resume.structured.headline ??
+    resume.structured.experience?.[0]?.role ??
+    "software engineer";
+
+  const jobs = await searchAllSources({
+    query,
+    location: profile.location ?? "",
+    lat: profile.lat,
+    lng: profile.lng,
+    radius_km: profile.search_radius_km ?? 25,
+    remote_ok: profile.remote_ok ?? true,
+    limit: 15,
+  });
+
+  // Guardar vacantes nuevas en BD (upsert por external_id)
+  if (jobs.length > 0) {
+    await serviceClient.from("jobs").upsert(jobs, {
+      onConflict: "external_id",
+      ignoreDuplicates: true,
+    });
+  }
+
+  // Crear matches usuario ↔ vacante
+  const jobRows = await serviceClient
+    .from("jobs")
+    .select("id, external_id")
+    .in("external_id", jobs.map((j) => j.external_id));
+
+  if (jobRows.data && jobRows.data.length > 0) {
+    const matches = jobRows.data.map((j) => ({
+      user_id: user.id,
+      job_id: j.id,
+      status: "suggested",
+    }));
+
+    await serviceClient.from("job_matches").upsert(matches, {
+      onConflict: "user_id,job_id",
+      ignoreDuplicates: true,
+    });
+  }
+
+  return NextResponse.json({ jobs, total: jobs.length });
+}
