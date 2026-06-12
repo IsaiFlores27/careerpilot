@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface Job {
   external_id: string;
@@ -18,7 +18,16 @@ interface Job {
 export default function JobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(false);
-  const [searched, setSearched] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+
+  // Cargar vacantes guardadas al entrar
+  useEffect(() => {
+    fetch("/api/jobs/saved")
+      .then((r) => r.json())
+      .then((data) => { if (data.jobs?.length > 0) setJobs(data.jobs); })
+      .catch(() => {})
+      .finally(() => setInitialLoading(false));
+  }, []);
 
   async function handleSearch() {
     setLoading(true);
@@ -28,7 +37,6 @@ export default function JobsPage() {
       setJobs(data.jobs ?? []);
     }
     setLoading(false);
-    setSearched(true);
   }
 
   return (
@@ -59,14 +67,21 @@ export default function JobsPage() {
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
-              Buscar ahora
+              {jobs.length > 0 ? "Actualizar" : "Buscar ahora"}
             </>
           )}
         </button>
       </div>
 
+      {/* Estado inicial cargando */}
+      {initialLoading && (
+        <div className="text-center py-20">
+          <span className="text-xs text-white/25">Cargando vacantes guardadas...</span>
+        </div>
+      )}
+
       {/* Estado vacío */}
-      {!searched && !loading && (
+      {!initialLoading && !loading && jobs.length === 0 && (
         <div className="text-center py-20">
           <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-5">
             <svg className="w-8 h-8 text-white/20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -78,20 +93,14 @@ export default function JobsPage() {
         </div>
       )}
 
-      {searched && jobs.length === 0 && !loading && (
-        <div className="text-center py-20">
-          <p className="text-white/40">No se encontraron vacantes. Verifica que tienes un CV analizado con perfil completo.</p>
-        </div>
-      )}
-
       {/* Lista de trabajos */}
-      {jobs.length > 0 && (
+      {jobs.length > 0 && !initialLoading && (
         <div className="space-y-3">
           <p className="text-xs text-white/30 mb-4">{jobs.length} vacantes encontradas</p>
           {jobs.map((job) => (
             <div
               key={job.external_id}
-              className="bg-white/5 border border-white/5 rounded-2xl p-5 hover:border-white/10 hover:bg-white/[0.07] transition-all group"
+              className="bg-white/5 border border-white/5 rounded-2xl p-5 hover:border-white/10 hover:bg-white/[0.07] transition-all"
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">

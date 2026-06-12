@@ -79,9 +79,45 @@ export async function POST(request: NextRequest) {
   });
 
   const toolExecutor = createToolExecutor(userContext);
-  const stream = await streamCoachChat(messages, userContext, toolExecutor);
 
-  return new NextResponse(stream, {
+  // Wrappear el stream para capturar la respuesta completa y guardarla
+  const rawStream = await streamCoachChat(messages, userContext, toolExecutor);
+
+  let assistantText = "";
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+
+  const wrappedStream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const reader = rawStream.getReader();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        controller.enqueue(value);
+        // Acumular texto del asistente
+        const chunk = decoder.decode(value);
+        for (const line of chunk.split("\n")) {
+          if (line.startsWith("data: ") && line !== "data: [DONE]") {
+            try {
+              const data = JSON.parse(line.slice(6));
+              if (data.type === "text") assistantText += data.text;
+            } catch { /* ignorar */ }
+          }
+        }
+      }
+      controller.close();
+      // Guardar respuesta del asistente en BD (fire and forget)
+      if (assistantText) {
+        void serviceClient.from("coach_messages").insert({
+          user_id: user.id,
+          role: "assistant",
+          content: [{ type: "text", text: assistantText }],
+        });
+      }
+    },
+  });
+
+  return new NextResponse(wrappedStream, {
     headers: {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",

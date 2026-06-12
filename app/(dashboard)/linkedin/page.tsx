@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface LinkedInResult {
   headline: string;
@@ -34,7 +34,17 @@ function CopyButton({ text, label }: { text: string; label: string }) {
 export default function LinkedInPage() {
   const [result, setResult] = useState<LinkedInResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingSaved, setLoadingSaved] = useState(true);
   const [error, setError] = useState("");
+
+  // Cargar último perfil generado
+  useEffect(() => {
+    fetch("/api/linkedin/saved")
+      .then((r) => r.json())
+      .then((data) => { if (data.result) setResult(data.result); })
+      .catch(() => {})
+      .finally(() => setLoadingSaved(false));
+  }, []);
 
   async function handleOptimize() {
     setLoading(true);
@@ -59,7 +69,11 @@ export default function LinkedInPage() {
         </p>
       </div>
 
-      {!result ? (
+      {loadingSaved ? (
+        <div className="flex justify-center py-16">
+          <span className="text-xs text-white/25">Cargando...</span>
+        </div>
+      ) : !result ? (
         <div className="max-w-lg">
           <div className="bg-white/5 border border-white/5 rounded-2xl p-10 text-center">
             <div className="w-16 h-16 rounded-2xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center mx-auto mb-6">
@@ -157,3 +171,4 @@ export default function LinkedInPage() {
     </div>
   );
 }
+

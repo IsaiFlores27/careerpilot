@@ -16,15 +16,29 @@ const QUICK_PROMPTS = [
 ];
 
 export default function CoachPage() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: "assistant",
-      content: "Hola, soy tu coach de carrera. Tengo acceso a tu CV y tu historial de postulaciones, así que mis consejos son específicos para ti.\n\n¿En qué te ayudo hoy?",
-    },
-  ]);
+  const WELCOME: Message = {
+    role: "assistant",
+    content: "Hola, soy tu coach de carrera. Tengo acceso a tu CV y tu historial de postulaciones, así que mis consejos son específicos para ti.\n\n¿En qué te ayudo hoy?",
+  };
+
+  const [messages, setMessages] = useState<Message[]>([WELCOME]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingHistory, setLoadingHistory] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Cargar historial persistido al montar
+  useEffect(() => {
+    fetch("/api/coach/history")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.messages && data.messages.length > 0) {
+          setMessages(data.messages);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingHistory(false));
+  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -95,6 +109,11 @@ export default function CoachPage() {
 
       {/* Mensajes */}
       <div className="flex-1 overflow-y-auto space-y-4 pb-4 pr-2">
+        {loadingHistory && (
+          <div className="flex justify-center py-6">
+            <span className="text-xs text-white/25">Cargando historial...</span>
+          </div>
+        )}
         {messages.map((msg, i) => (
           <div key={i} className={`flex gap-3 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
             {msg.role === "assistant" && (
